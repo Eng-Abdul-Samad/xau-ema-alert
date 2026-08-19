@@ -1,0 +1,21 @@
+.env
+*.env
+__pycache__/
+.pytest_cache/
+*.pyc
+.vscode/
+.idea/
+
+# Virtual environments
+venv/
+.venv/
+.env
+.env.*
+
+# Packaging
+build/
+dist/
+*.egg-info/
+
+# State
+state/
