@@ -1,0 +1,63 @@
+name: XAU/USD EMA Alert
+
+on:
+  schedule:
+    - cron: "2,17,32,47 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: xau-ema-alert
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  alert:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run XAU/USD EMA monitor
+        env:
+          TWELVE_DATA_API_KEY: ${{ secrets.TWELVE_DATA_API_KEY }}
+          GMAIL_USERNAME: ${{ secrets.GMAIL_USERNAME }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          GMAIL_RECIPIENT: ${{ secrets.GMAIL_RECIPIENT }}
+        run: python -m src.main
+
+      - name: Persist signal state
+        run: |
+          if git diff --quiet -- state/signal_state.json && git ls-files --error-unmatch state/signal_state.json >/dev/null 2>&1; then
+            echo "No state change."
+            exit 0
+          fi
+
+          if [ ! -f state/signal_state.json ]; then
+            echo "No state file was created."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add state/signal_state.json
+          if git diff --cached --quiet; then
+            echo "No state change."
+            exit 0
+          fi
+          git commit -m "Update XAU/USD alert state"
+          git push
